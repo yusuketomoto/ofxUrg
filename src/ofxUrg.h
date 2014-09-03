@@ -86,7 +86,7 @@ public:
     
     bool start()
     {
-        urg.stop_measurement();
+        stop();
         
         qrk::Lidar::measurement_type_t measurement_type;
         switch (mode) {
@@ -110,8 +110,9 @@ public:
     }
     void stop()
     {
-        urg.stop_measurement();
+        waitForThread();
         stopThread();
+        urg.stop_measurement();
     }
     
     void update()
