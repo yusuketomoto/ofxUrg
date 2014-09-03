@@ -160,7 +160,6 @@ public:
         for (int i=0; i<data.size(); i++)
         {
             float r = data[i];
-            if (r > 60000) continue;
             float theta = urg.index2rad(i);
             float x = r * cos(theta);
             float y = r * sin(theta);
