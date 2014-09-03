@@ -31,14 +31,18 @@ public:
     :device_or_ip_name(DEFAULT_HOST)
     ,baudrate_or_port_number(DEFAULT_PORT)
     ,connect_type(ETHERNET)
+    ,mode(DISTANCE)
     ,active(false)
     ,is_frame_new(false)
     {}
     
     virtual ~Device()
     {
+        if (isThreadRunning()) ofThread::waitForThread();
         if (urg.is_open()) urg.close();
     }
+    
+    void setMode(const Mode& mode) { this->mode = mode; }
     
     void setupSerial(const string& device_name = "", int baudrate = 115200)
     {
@@ -80,11 +84,9 @@ public:
     
     void close() { urg.close(); }
     
-    bool start(const Mode& mode = DISTANCE_INTENSITY)
+    bool start()
     {
         urg.stop_measurement();
-        
-        this->mode = mode;
         
         qrk::Lidar::measurement_type_t measurement_type;
         switch (mode) {
@@ -110,6 +112,29 @@ public:
     {
         urg.stop_measurement();
         stopThread();
+    }
+    
+    void update()
+    {
+        is_frame_new = false;
+        
+        ofMutex mutex;
+        mutex.lock();
+        if (data != data_buffer)
+        {
+            data = data_buffer;
+            is_frame_new = true;
+        }
+        
+        if (mode == DISTANCE_INTENSITY || mode == MULTIECHO_INTENSITY)
+        {
+            if (intensity != intensity_buffer)
+            {
+                intensity = intensity_buffer;
+                is_frame_new = true;
+            }
+        }
+        mutex.unlock();
     }
     
     void drawDebug(float width = ofGetWindowWidth(), float height = ofGetWindowHeight()) const
@@ -147,19 +172,29 @@ public:
     }
     bool isFrameNew() const { return is_frame_new; }
     
-    string  productType(void)       const { return urg.product_type(); }
-    string  firmwareVersion(void)   const { return urg.firmware_version(); }
-    string  serialId(void)          const { return urg.serial_id(); }
-    string  status(void)            const { return urg.status(); }
-    string  state(void)             const { return urg.state(); }
+    string  productType(void)           const { return urg.product_type(); }
+    string  firmwareVersion(void)       const { return urg.firmware_version(); }
+    string  serialId(void)              const { return urg.serial_id(); }
+    string  status(void)                const { return urg.status(); }
+    string  state(void)                 const { return urg.state(); }
     
-    int     minStep(void)           const { return urg.min_step(); }
-    int     maxStep(void)           const { return urg.max_step(); }
-    long    minDistance(void)       const { return urg.min_distance(); }
-    long    maxDistance(void)       const { return urg.max_distance(); }
-    long    scanUsec(void)          const { return urg.scan_usec(); }
-    int     maxDataSize(void)       const { return urg.max_data_size(); }
-    int     maxEchoSize(void)       const { return urg.max_echo_size(); }
+    int     minStep(void)               const { return urg.min_step(); }
+    int     maxStep(void)               const { return urg.max_step(); }
+    long    minDistance(void)           const { return urg.min_distance(); }
+    long    maxDistance(void)           const { return urg.max_distance(); }
+    long    scanUsec(void)              const { return urg.scan_usec(); }
+    int     maxDataSize(void)           const { return urg.max_data_size(); }
+    int     maxEchoSize(void)           const { return urg.max_echo_size(); }
+    
+    double  index2rad(int index)        const { return urg.index2rad(index); }
+    double  index2deg(int index)        const { return urg.index2deg(index); }
+    int     rad2index(double radian)    const { return urg.rad2index(radian); }
+    int     deg2index(double degree)    const { return urg.deg2index(degree); }
+    int     rad2step(double radian)     const { return urg.rad2step(radian); }
+    int     deg2step(double degree)     const { return urg.deg2step(degree); }
+    double  step2rad(int step)          const { return urg.step2rad(step); }
+    double  step2deg(int step)          const { return urg.step2deg(step); }
+    int     step2index(int step)        const { return urg.step2index(step); }
     
     const vector<long>& getData() const { return data; }
     long getData(int index) const { return data.at(index); }
@@ -178,12 +213,12 @@ protected:
                 {
                     if (mode == DISTANCE)
                     {
-                        if (!urg.get_distance(data, &timestamp))
+                        if (!urg.get_distance(data_buffer, &timestamp))
                             ofLogError("urg get distance", urg.what());
                     }
                     if (mode == DISTANCE_INTENSITY)
                     {
-                        if (!urg.get_distance_intensity(data, intensity, &timestamp))
+                        if (!urg.get_distance_intensity(data_buffer, intensity_buffer, &timestamp))
                             ofLogError("urg get distance intensity", urg.what());
                     }
                 }
@@ -199,8 +234,8 @@ protected:
     
     bool active;
     bool is_frame_new;
-    vector<long> data;
-    vector<unsigned short> intensity;
+    vector<long> data, data_buffer;
+    vector<unsigned short> intensity, intensity_buffer;
     long timestamp;
 };
 

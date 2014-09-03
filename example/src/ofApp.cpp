@@ -13,19 +13,21 @@ public:
         ofSetVerticalSync(true);
         ofBackground(0);
         
+        urg.setMode(ofxUrg::DISTANCE_INTENSITY);
         urg.setupEthernet();
         
-        cout << urg.productType() << endl;
-        cout << urg.firmwareVersion() << endl;
-        cout << urg.serialId() << endl;
-        cout << urg.status() << endl;
-        cout << urg.state() << endl;
+        ofLogNotice("Product", urg.productType());
+        ofLogNotice("Serial", urg.serialId());
+        ofLogNotice("Status", urg.status());
+        ofLogNotice("State", urg.state());
+        ofLogNotice("Firmware version", urg.firmwareVersion());
         
         urg.start();
     }
     
     void update()
     {
+        urg.update();
     }
     
     void draw()
@@ -40,11 +42,6 @@ public:
         cam.end();
         
         ofDrawBitmapString(ofToString(ofGetFrameRate(), 0), 20, 20);
-    }
-    
-    void keyPressed(int key)
-    {
-        
     }
 };
 
