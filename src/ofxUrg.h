@@ -23,6 +23,8 @@ enum Mode
     MULTIECHO_INTENSITY
 };
 
+typedef vector<long> Frame;
+
 class Device : public ofThread
 {
     
@@ -44,7 +46,7 @@ public:
     
     void setMode(const Mode& mode) { this->mode = mode; }
     
-    void setupSerial(const string& device_name = "", int baudrate = 115200)
+    bool setupSerial(const string& device_name = "", int baudrate = 115200)
     {
         connect_type = SERIAL;
         
@@ -58,28 +60,30 @@ public:
         }
         baudrate_or_port_number = baudrate;
         
-        open();
+        return open();
     }
     
-    void setupEthernet(const string& ip = DEFAULT_HOST, int port = DEFAULT_PORT)
+    bool setupEthernet(const string& ip = DEFAULT_HOST, int port = DEFAULT_PORT)
     {
         connect_type = ETHERNET;
         device_or_ip_name = ip;
         baudrate_or_port_number = port;
         
-        open();
+        return open();
     }
     
-    void open()
+    bool open()
     {
         if (!urg.open(device_or_ip_name.c_str(), baudrate_or_port_number,
                       (connect_type==SERIAL) ? qrk::Urg_driver::Serial : qrk::Urg_driver::Ethernet))
         {
             ofLogError("Urg connection failed", urg.what());
+            return false;
         }
         
         urg.set_scanning_parameter(minStep(), maxStep());
         urg.set_sensor_time_stamp(ofGetElapsedTimef());
+        return true;
     }
     
     void close() { urg.close(); }
@@ -196,7 +200,7 @@ public:
     double  step2deg(int step)          const { return urg.step2deg(step); }
     int     step2index(int step)        const { return urg.step2index(step); }
     
-    const vector<long>& getData() const { return data; }
+    const Frame& getData() const { return data; }
     long getData(int index) const { return data.at(index); }
     const vector<unsigned short>& getIntensity() const { return intensity; }
     unsigned short getIntensity(int index) const { return intensity.at(index); }
